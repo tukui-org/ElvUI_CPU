@@ -1,0 +1,10 @@
+## Interface: 11509, 16001, 20506, 38002, 50504, 120100, 120105
+## Title: |cff1784d1ElvUI|r |cfffe7b2cCPU Analyzer|r
+## Version: 0.1.7
+## Author: Resike
+## DefaultState: Enabled
+## Dependencies: ElvUI
+## SavedVariables: ElvUI_CPUSaved
+
+ElvUI_CPU.lua
+ElvUI_CPU.xml

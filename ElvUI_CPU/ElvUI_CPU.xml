@@ -1,0 +1,195 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.blizzard.com/wow/ui/ https://raw.githubusercontent.com/Meorawr/wow-ui-schema/main/UI.xsd">
+	<Button name="ElvUICpuToolbarButtonTemplate" virtual="true">
+		<Size x="72" y="20" />
+		<Layers>
+			<Layer level="BACKGROUND">
+				<Texture parentKey="NormalTexture" atlas="auctionhouse-nav-button" useAtlasSize="false">
+					<Anchors>
+						<Anchor point="TOPLEFT" x="-2" y="0" />
+						<Anchor point="BOTTOMRIGHT" x="2" y="-12" />
+					</Anchors>
+				</Texture>
+			</Layer>
+			<Layer level="OVERLAY">
+				<Texture parentKey="MouseoverOverlay" hidden="true" atlas="auctionhouse-nav-button"
+					useAtlasSize="false" alphaMode="ADD">
+					<Anchors>
+						<Anchor point="TOPLEFT" relativeKey="$parent.NormalTexture" />
+						<Anchor point="BOTTOMRIGHT" relativeKey="$parent.NormalTexture" />
+					</Anchors>
+				</Texture>
+			</Layer>
+		</Layers>
+		<ButtonText parentKey="Text">
+			<Anchors>
+				<Anchor point="CENTER" />
+			</Anchors>
+		</ButtonText>
+		<NormalFont style="GameFontHighlight" />
+		<HighlightFont style="GameFontHighlight" />
+		<DisabledFont style="GameFontDisable" />
+	</Button>
+
+	<Button name="ElvUICpuRowTemplate" mixin="ElvUICpuRowMixin" virtual="true">
+		<Size y="20" />
+		<Layers>
+			<Layer level="BACKGROUND">
+				<Texture parentKey="Alternate" hidden="true" alphaMode="ADD" file="Interface\Buttons\WHITE8X8">
+					<Anchors>
+						<Anchor point="TOPLEFT" />
+						<Anchor point="BOTTOMRIGHT" />
+					</Anchors>
+					<Color r="1" g="1" b="1" a="0.05" />
+				</Texture>
+			</Layer>
+		</Layers>
+		<Scripts>
+			<OnLoad method="OnLoad" />
+		</Scripts>
+	</Button>
+
+	<Frame name="ElvUI_CPUFrame" mixin="ElvUICpuPanelMixin" inherits="ButtonFrameTemplate"
+		parent="UIParent" toplevel="true" movable="true" resizable="true" enableMouse="true"
+		hidden="true" frameStrata="HIGH">
+		<Size x="900" y="520" />
+		<Anchors>
+			<Anchor point="CENTER" />
+		</Anchors>
+		<Frames>
+			<Frame parentKey="TitleBar" inherits="PanelDragBarTemplate">
+				<Size y="32" />
+				<Anchors>
+					<Anchor point="TOPLEFT" />
+					<Anchor point="TOPRIGHT" />
+				</Anchors>
+			</Frame>
+			<Button parentKey="ResizeButton" inherits="PanelResizeButtonTemplate">
+				<Anchors>
+					<Anchor point="BOTTOMRIGHT" x="-4" y="4" />
+				</Anchors>
+			</Button>
+			<Frame parentKey="Toolbar">
+				<Size y="36" />
+				<Anchors>
+					<Anchor point="TOPLEFT" x="12" y="-30" />
+					<Anchor point="TOPRIGHT" x="-12" y="-30" />
+				</Anchors>
+				<Frames>
+					<Button parentKey="PlayButton" inherits="ElvUICpuToolbarButtonTemplate" text="Play">
+						<Size x="84" y="20" />
+						<Anchors>
+							<Anchor point="TOPLEFT" y="-2" />
+						</Anchors>
+						<KeyValues>
+							<KeyValue key="tooltipText"
+								value="Starts or stops the one-second list refresh. Measuring continues either way."
+								type="string" />
+						</KeyValues>
+					</Button>
+					<Button parentKey="RefreshButton" inherits="ElvUICpuToolbarButtonTemplate" text="Refresh">
+						<Size x="96" y="20" />
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeKey="$parent.PlayButton" relativePoint="TOPRIGHT" x="6" />
+						</Anchors>
+						<KeyValues>
+							<KeyValue key="tooltipText" value="Updates the visible rows once."
+								type="string" />
+						</KeyValues>
+					</Button>
+					<Button parentKey="ResetButton" inherits="ElvUICpuToolbarButtonTemplate" text="Reset">
+						<Size x="84" y="20" />
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeKey="$parent.RefreshButton" relativePoint="TOPRIGHT" x="6" />
+						</Anchors>
+						<KeyValues>
+							<KeyValue key="tooltipText"
+								value="Zeros call counts, times, and byte totals collected since the window loaded."
+								type="string" />
+						</KeyValues>
+					</Button>
+					<EditBox parentKey="SearchBox" autoFocus="false" historyLines="1" bytes="256"
+						inherits="SearchBoxTemplate">
+						<Size x="220" y="22" />
+						<Anchors>
+							<Anchor point="RIGHT" />
+						</Anchors>
+						<KeyValues>
+							<KeyValue key="instructionText" value="Function name" type="string" />
+							<KeyValue key="tooltipText"
+								value="Filters the list to method names that contain this text."
+								type="string" />
+						</KeyValues>
+					</EditBox>
+				</Frames>
+			</Frame>
+			<Frame parentKey="Columns" inherits="ColumnDisplayTemplate">
+				<Size y="24" />
+				<Anchors>
+					<Anchor point="TOPLEFT" relativeKey="$parent.Toolbar" relativePoint="BOTTOMLEFT"
+						y="-4" />
+					<Anchor point="TOPRIGHT" relativeKey="$parent.Toolbar"
+						relativePoint="BOTTOMRIGHT" x="-25" y="-4" />
+				</Anchors>
+			</Frame>
+			<Frame parentKey="ScrollBox" inherits="WowScrollBoxList">
+				<Anchors>
+					<Anchor point="TOPLEFT" relativeKey="$parent.Columns" relativePoint="BOTTOMLEFT"
+						y="-2" />
+					<Anchor point="BOTTOMRIGHT" x="-37" y="32" />
+				</Anchors>
+				<Layers>
+					<Layer level="BACKGROUND">
+						<Texture file="Interface\Buttons\WHITE8X8">
+							<Color r="0.03" g="0.03" b="0.03" a="1" />
+						</Texture>
+					</Layer>
+				</Layers>
+			</Frame>
+			<EventFrame parentKey="ScrollBar" inherits="MinimalScrollBar">
+				<Anchors>
+					<Anchor point="TOPLEFT" relativeKey="$parent.ScrollBox" relativePoint="TOPRIGHT"
+						x="6" y="-4" />
+					<Anchor point="BOTTOMLEFT" relativeKey="$parent.ScrollBox"
+						relativePoint="BOTTOMRIGHT" x="6" y="4" />
+				</Anchors>
+			</EventFrame>
+			<EventFrame parentKey="HorizontalScrollBar" inherits="WowTrimHorizontalScrollBar"
+				hidden="true">
+				<Anchors>
+					<Anchor point="BOTTOMLEFT" x="12" y="26" />
+					<Anchor point="BOTTOMRIGHT" x="-37" y="26" />
+				</Anchors>
+			</EventFrame>
+			<Button parentKey="FooterButton">
+				<Size y="18" />
+				<Anchors>
+					<Anchor point="BOTTOMLEFT" x="12" y="6" />
+					<Anchor point="BOTTOMRIGHT" x="-140" y="6" />
+				</Anchors>
+				<Layers>
+					<Layer level="OVERLAY">
+						<FontString parentKey="Text" inherits="GameFontHighlightSmall" justifyH="LEFT" wordwrap="true">
+							<Anchors>
+								<Anchor point="TOPLEFT" x="2" y="-2" />
+							</Anchors>
+						</FontString>
+					</Layer>
+				</Layers>
+			</Button>
+		</Frames>
+		<Layers>
+			<Layer level="OVERLAY">
+				<FontString parentKey="Version" inherits="GameFontDisableSmall" justifyH="RIGHT">
+					<Anchors>
+						<Anchor point="BOTTOMRIGHT" x="-28" y="8" />
+					</Anchors>
+				</FontString>
+			</Layer>
+		</Layers>
+		<Scripts>
+			<OnLoad method="OnLoad" />
+			<OnShow method="OnShow" />
+		</Scripts>
+	</Frame>
+</Ui>
