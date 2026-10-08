@@ -990,6 +990,10 @@ function CPU:OnRefreshTimer(elapsedSeconds)
 		return
 	end
 
+	if self.displayProvider then
+		self.cachedMeasuredTotalMilliseconds = self:GetMeasuredTotalMilliseconds()
+		self.displayProvider:Sort()
+	end
 	self:RefreshVisibleRows()
 	self:UpdateFooter()
 end
