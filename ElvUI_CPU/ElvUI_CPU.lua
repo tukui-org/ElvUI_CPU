@@ -39,9 +39,9 @@ CPU.columnDefinitions = {
 	{ key = "name", title = "Function", width = 280, minimumWidth = 140, justify = "LEFT", tooltip = "Method name" },
 	{ key = "calls", title = "Calls", width = 70, minimumWidth = 48, justify = "RIGHT", tooltip = "Calls" },
 	{ key = "callsPerSecond", title = "Calls/sec", width = 90, minimumWidth = 48, justify = "RIGHT", tooltip = "Calls per second" },
-	{ key = "peakMilliseconds", title = "Peak time", width = 90, minimumWidth = 48, justify = "RIGHT", tooltip = "Peak elapsedMilliseconds" },
-	{ key = "timePerCall", title = "Time/call", width = 90, minimumWidth = 48, justify = "RIGHT", tooltip = "Average elapsedMilliseconds" },
-	{ key = "totalMilliseconds", title = "Total time", width = 90, minimumWidth = 48, justify = "RIGHT", tooltip = "Total elapsedMilliseconds" },
+	{ key = "peakMilliseconds", title = "Peak time", width = 90, minimumWidth = 48, justify = "RIGHT", tooltip = "Peak elapsedTicks" },
+	{ key = "timePerCall", title = "Time/call", width = 90, minimumWidth = 48, justify = "RIGHT", tooltip = "Average elapsedTicks" },
+	{ key = "totalMilliseconds", title = "Total time", width = 90, minimumWidth = 48, justify = "RIGHT", tooltip = "Total elapsedTicks" },
 	{ key = "allocatedBytes", title = "Allocated", width = 100, minimumWidth = 64, justify = "RIGHT", tooltip = "allocatedBytes" },
 	{ key = "deallocatedBytes", title = "Freed", width = 100, minimumWidth = 64, justify = "RIGHT", tooltip = "deallocatedBytes" },
 	{ key = "retainedBytes", title = "Retained", width = 100, minimumWidth = 64, justify = "RIGHT", tooltip = "allocatedBytes minus deallocatedBytes" },
@@ -219,12 +219,42 @@ function CPU:IsProfilerEnabled()
 	return C_AddOnProfiler.IsEnabled()
 end
 
+function CPU:GetProfilerTickFrequency()
+	if not self.profilerTickFrequency then
+		self.profilerTickFrequency = C_AddOnProfiler.GetTicksPerSecond()
+	end
+
+	return self.profilerTickFrequency
+end
+
+function CPU:FormatElapsedTicks(elapsedTicks)
+	local microseconds = (elapsedTicks * 1000000) / self:GetProfilerTickFrequency()
+	if microseconds < 1000 then
+		return string_format("%.1f µs", microseconds)
+	end
+
+	return string_format("%.3f ms", microseconds / 1000)
+end
+
+function CPU:GetAverageElapsedTicks(record)
+	if record.calls <= 0 then
+		return 0
+	end
+
+	return record.totalTicks / record.calls
+end
+
 function CPU:RecordMeasuredCall(record, callResults)
 	local elapsedMilliseconds = callResults.elapsedMilliseconds
+	local elapsedTicks = callResults.elapsedTicks
 	record.calls = record.calls + 1
 	record.totalMilliseconds = record.totalMilliseconds + elapsedMilliseconds
+	record.totalTicks = record.totalTicks + elapsedTicks
 	if elapsedMilliseconds > record.peakMilliseconds then
 		record.peakMilliseconds = elapsedMilliseconds
+	end
+	if elapsedTicks > record.peakTicks then
+		record.peakTicks = elapsedTicks
 	end
 	record.allocatedBytes = record.allocatedBytes + callResults.allocatedBytes
 	record.deallocatedBytes = record.deallocatedBytes + callResults.deallocatedBytes
@@ -254,6 +284,8 @@ function CPU:WrapFunction(displayName, owner, methodName, elvuiCodeSearch)
 		calls = 0,
 		totalMilliseconds = 0,
 		peakMilliseconds = 0,
+		totalTicks = 0,
+		peakTicks = 0,
 		allocatedBytes = 0,
 		deallocatedBytes = 0,
 	}
@@ -261,6 +293,9 @@ function CPU:WrapFunction(displayName, owner, methodName, elvuiCodeSearch)
 	local wrappedFunction
 	wrappedFunction = function(...)
 		local callResults, packedReturns = CaptureMeasuredReturns(C_AddOnProfiler.MeasureCall(originalFunction, ...))
+		if callResults.elapsedTicks > record.peakTicks then
+			record.peakCallStack = debugstack(2, 25, 2)
+		end
 		CPU:RecordMeasuredCall(record, callResults)
 		return RestorePackedReturns(packedReturns, unpack(packedReturns, 1, packedReturns.n))
 	end
@@ -479,6 +514,9 @@ function CPU:ResetMeasuredFunctions()
 		record.calls = 0
 		record.totalMilliseconds = 0
 		record.peakMilliseconds = 0
+		record.totalTicks = 0
+		record.peakTicks = 0
+		record.peakCallStack = nil
 		record.allocatedBytes = 0
 		record.deallocatedBytes = 0
 	end
@@ -955,20 +993,153 @@ StaticPopupDialogs["ELVUI_CPU_GITHUB_SEARCH"] = {
 	hideOnEscape = 1,
 }
 
-function CPU:ShowFunctionMenu(row, record)
-	if not record.elvuiCodeSearch then
-		return
-	end
-	local methodName = self:GetSearchMethodName(record)
-	if methodName == "" then
-		return
+local peakCallStackBorderNames = {
+	"TopLeftTex",
+	"TopRightTex",
+	"TopTex",
+	"BottomLeftTex",
+	"BottomRightTex",
+	"BottomTex",
+	"LeftTex",
+	"RightTex",
+	"MiddleTex",
+}
+
+function CPU:CreatePeakCallStackDialog()
+	if self.peakCallStackDialog then
+		return self.peakCallStackDialog
 	end
 
+	local dialog = CreateFrame("Frame", "ElvUI_CPUPeakCallStackDialog", UIParent)
+	dialog:SetSize(960, 520)
+	dialog:SetPoint("CENTER")
+	dialog:SetFrameStrata("DIALOG")
+	dialog:SetToplevel(true)
+	dialog:EnableMouse(true)
+	dialog:SetMovable(true)
+	dialog:SetClampedToScreen(true)
+	dialog:SetResizeBounds(640, 320, 1400, 900)
+	dialog:RegisterForDrag("LeftButton")
+	dialog:SetScript("OnDragStart", dialog.StartMoving)
+	dialog:SetScript("OnDragStop", dialog.StopMovingOrSizing)
+	dialog:SetTemplate("Transparent")
+	dialog:CreateCloseButton()
+	dialog:Hide()
+
+	local title = dialog:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	title:SetPoint("TOP", 0, -14)
+	title:SetText("Slowest call stack")
+
+	local scrollFrame = CreateFrame("ScrollFrame", nil, dialog, "InputScrollFrameTemplate")
+	scrollFrame:SetPoint("TOPLEFT", 16, -40)
+	scrollFrame:SetPoint("BOTTOMRIGHT", -36, 16)
+	scrollFrame.CharCount:Hide()
+	for borderIndex = 1, #peakCallStackBorderNames do
+		local borderRegion = scrollFrame[peakCallStackBorderNames[borderIndex]]
+		if borderRegion then
+			borderRegion:Hide()
+		end
+	end
+	scrollFrame:CreateBackdrop("Transparent")
+	scrollFrame.EditBox:SetMaxLetters(0)
+	dialog.ScrollFrame = scrollFrame
+
+	local function UpdatePeakCallStackEditWidth(resizedDialog)
+		local editBox = resizedDialog.ScrollFrame.EditBox
+		local editWidth = resizedDialog.ScrollFrame:GetWidth() - 18
+		if editWidth < 1 then
+			return
+		end
+		editBox:SetWidth(editWidth)
+		ScrollingEdit_OnTextChanged(editBox, resizedDialog.ScrollFrame)
+	end
+
+	dialog:SetScript("OnSizeChanged", UpdatePeakCallStackEditWidth)
+	UpdatePeakCallStackEditWidth(dialog)
+
+	scrollFrame.EditBox:SetScript("OnEscapePressed", function(editBox)
+		editBox:ClearFocus()
+		dialog:Hide()
+	end)
+
+	local resizeButton = CreateFrame("Button", nil, dialog, "PanelResizeButtonTemplate")
+	resizeButton:SetPoint("BOTTOMRIGHT", -4, 4)
+	resizeButton:Init(dialog, 640, 320, 1400, 900)
+
+	local skinModule = E:GetModule("Skins")
+	skinModule:HandleTrimScrollBar(scrollFrame.ScrollBar)
+
+	if UISpecialFrames then
+		UISpecialFrames[#UISpecialFrames + 1] = "ElvUI_CPUPeakCallStackDialog"
+	end
+
+	self.peakCallStackDialog = dialog
+	return dialog
+end
+
+function CPU:FormatPeakCallStack(stackText)
+	local formattedLines = { }
+	local heldCallBoundary = false
+	for stackLine in string.gmatch(stackText, "[^\n]+") do
+		if string_find(stackLine, "in function 'MeasureCall'", 1, true) then
+			heldCallBoundary = false
+		elseif stackLine == "[C]: ?" then
+			if heldCallBoundary then
+				formattedLines[#formattedLines + 1] = stackLine
+			end
+			heldCallBoundary = true
+		else
+			if heldCallBoundary then
+				formattedLines[#formattedLines + 1] = "[C]: ?"
+				heldCallBoundary = false
+			end
+			if string_find(stackLine, "ElvUI_CPU/ElvUI_CPU.lua", 1, true) then
+				local wrapperName = string.match(stackLine, "in function '(.-)'")
+				if wrapperName then
+					formattedLines[#formattedLines + 1] = wrapperName
+				end
+			else
+				formattedLines[#formattedLines + 1] = stackLine
+			end
+		end
+	end
+	if heldCallBoundary then
+		formattedLines[#formattedLines + 1] = "[C]: ?"
+	end
+	return table.concat(formattedLines, "\n")
+end
+
+function CPU:GetPeakCallStackText(record)
+	return string_format("%s\n\n%s", self:FormatElapsedTicks(record.peakTicks), self:FormatPeakCallStack(record.peakCallStack))
+end
+
+function CPU:ShowPeakCallStack(record)
+	local dialog = self:CreatePeakCallStackDialog()
+	local editBox = dialog.ScrollFrame.EditBox
+	editBox:SetText(self:GetPeakCallStackText(record))
+	editBox:HighlightText()
+	editBox:SetFocus()
+	dialog:Show()
+end
+
+function CPU:ShowFunctionMenu(row, record)
+	local methodName = self:GetSearchMethodName(record)
 	MenuUtil.CreateContextMenu(row, function(owner, rootDescription)
-		rootDescription:CreateTitle(methodName)
-		rootDescription:CreateButton("Copy GitHub search URL", function()
-			StaticPopup_Show("ELVUI_CPU_GITHUB_SEARCH", nil, nil, CPU:GetElvUICodeSearchURL(methodName))
-		end)
+		if methodName ~= "" then
+			rootDescription:CreateTitle(methodName)
+		else
+			rootDescription:CreateTitle(record.name)
+		end
+		if record.elvuiCodeSearch and methodName ~= "" then
+			rootDescription:CreateButton("Copy GitHub search URL", function()
+				StaticPopup_Show("ELVUI_CPU_GITHUB_SEARCH", nil, nil, CPU:GetElvUICodeSearchURL(methodName))
+			end)
+		end
+		if record.peakCallStack then
+			rootDescription:CreateButton("Slowest call stack", function()
+				CPU:ShowPeakCallStack(record)
+			end)
+		end
 	end)
 end
 
@@ -1029,9 +1200,9 @@ function ElvUICpuRowMixin:Refresh()
 	self.cells[1].Text:SetText(record.name)
 	self.cells[2].Text:SetText(record.calls)
 	self.cells[3].Text:SetFormattedText("%.3f", CPU:GetCallsPerSecond(record))
-	self.cells[4].Text:SetFormattedText("%.3f ms", record.peakMilliseconds)
-	self.cells[5].Text:SetFormattedText("%.3f ms", CPU:GetTimePerCall(record))
-	self.cells[6].Text:SetFormattedText("%.3f ms", record.totalMilliseconds)
+	self.cells[4].Text:SetText(CPU:FormatElapsedTicks(record.peakTicks))
+	self.cells[5].Text:SetText(CPU:FormatElapsedTicks(CPU:GetAverageElapsedTicks(record)))
+	self.cells[6].Text:SetText(CPU:FormatElapsedTicks(record.totalTicks))
 	self.cells[7].Text:SetText(CPU:FormatByteCount(record.allocatedBytes))
 	self.cells[8].Text:SetText(CPU:FormatByteCount(record.deallocatedBytes))
 	self.cells[9].Text:SetText(CPU:FormatByteCount(CPU:GetRetainedBytes(record)))
