@@ -30,7 +30,7 @@ CPU.originalFunctions = { }
 CPU.wrappedMarkers = { }
 CPU.columnHeaders = { }
 CPU.searchText = ""
-CPU.sortColumnIndex = 6
+CPU.sortColumnIndex = 7
 CPU.sortDescending = true
 CPU.refreshRunning = false
 CPU.horizontalOffset = 0
@@ -41,6 +41,7 @@ CPU.columnDefinitions = {
 	{ key = "callsPerSecond", title = "Calls/sec", width = 90, minimumWidth = 48, justify = "RIGHT", tooltip = "Calls per second" },
 	{ key = "peakMilliseconds", title = "Peak time", width = 90, minimumWidth = 48, justify = "RIGHT", tooltip = "Peak elapsedTicks" },
 	{ key = "timePerCall", title = "Time/call", width = 90, minimumWidth = 48, justify = "RIGHT", tooltip = "Average elapsedTicks" },
+	{ key = "recentTicksPerSecond", title = "Time/sec", width = 90, minimumWidth = 48, justify = "RIGHT", tooltip = "elapsedTicks added during the last refresh interval" },
 	{ key = "totalMilliseconds", title = "Total time", width = 90, minimumWidth = 48, justify = "RIGHT", tooltip = "Total elapsedTicks" },
 	{ key = "allocatedBytes", title = "Allocated", width = 100, minimumWidth = 64, justify = "RIGHT", tooltip = "allocatedBytes" },
 	{ key = "deallocatedBytes", title = "Freed", width = 100, minimumWidth = 64, justify = "RIGHT", tooltip = "deallocatedBytes" },
@@ -286,6 +287,7 @@ function CPU:WrapFunction(displayName, owner, methodName, elvuiCodeSearch)
 		peakMilliseconds = 0,
 		totalTicks = 0,
 		peakTicks = 0,
+		recentTicksPerSecond = 0,
 		allocatedBytes = 0,
 		deallocatedBytes = 0,
 	}
@@ -425,6 +427,8 @@ function CPU:GetSortValue(record, key)
 		return record.peakMilliseconds
 	elseif key == "timePerCall" then
 		return self:GetTimePerCall(record)
+	elseif key == "recentTicksPerSecond" then
+		return record.recentTicksPerSecond
 	elseif key == "totalMilliseconds" then
 		return record.totalMilliseconds
 	elseif key == "allocatedBytes" then
@@ -518,6 +522,8 @@ function CPU:ResetMeasuredFunctions()
 		record.peakMilliseconds = 0
 		record.totalTicks = 0
 		record.peakTicks = 0
+		record.sampleTicks = nil
+		record.recentTicksPerSecond = 0
 		record.peakCallStack = nil
 		record.allocatedBytes = 0
 		record.deallocatedBytes = 0
@@ -949,14 +955,32 @@ function CPU:StopColumnDrag()
 				end
 			end
 
+function CPU:SampleRecentCost(intervalSeconds)
+	if not intervalSeconds or intervalSeconds <= 0 then
+		intervalSeconds = 1
+	end
+
+	for recordIndex = 1, #self.functionRecords do
+		local record = self.functionRecords[recordIndex]
+		if record.sampleTicks then
+			record.recentTicksPerSecond = (record.totalTicks - record.sampleTicks) / intervalSeconds
+		else
+			record.recentTicksPerSecond = 0
+		end
+		record.sampleTicks = record.totalTicks
+	end
+end
+
 function CPU:OnRefreshTimer(elapsedSeconds)
 	self.refreshElapsed = (self.refreshElapsed or 0) + elapsedSeconds
 	if self.refreshElapsed < 1 then
 		return
 	end
 
+	local intervalSeconds = self.refreshElapsed
 	self.refreshElapsed = 0
 	self:WrapElvUIFunctions()
+	self:SampleRecentCost(intervalSeconds)
 
 	if not self.refreshRunning or not self.frame or not self.frame:IsShown() then
 		return
@@ -1230,11 +1254,12 @@ function ElvUICpuRowMixin:Refresh()
 	self.cells[3].Text:SetFormattedText("%.3f", CPU:GetCallsPerSecond(record))
 	self.cells[4].Text:SetText(CPU:FormatElapsedTicks(record.peakTicks))
 	self.cells[5].Text:SetText(CPU:FormatElapsedTicks(CPU:GetAverageElapsedTicks(record)))
-	self.cells[6].Text:SetText(CPU:FormatElapsedTicks(record.totalTicks))
-	self.cells[7].Text:SetText(CPU:FormatByteCount(record.allocatedBytes))
-	self.cells[8].Text:SetText(CPU:FormatByteCount(record.deallocatedBytes))
-	self.cells[9].Text:SetText(CPU:FormatByteCount(CPU:GetRetainedBytes(record)))
-	self.cells[10].Text:SetFormattedText("%.2f%%", CPU:GetOverallPercent(record, measuredTotalMilliseconds))
+	self.cells[6].Text:SetText(CPU:FormatElapsedTicks(record.recentTicksPerSecond))
+	self.cells[7].Text:SetText(CPU:FormatElapsedTicks(record.totalTicks))
+	self.cells[8].Text:SetText(CPU:FormatByteCount(record.allocatedBytes))
+	self.cells[9].Text:SetText(CPU:FormatByteCount(record.deallocatedBytes))
+	self.cells[10].Text:SetText(CPU:FormatByteCount(CPU:GetRetainedBytes(record)))
+	self.cells[11].Text:SetFormattedText("%.2f%%", CPU:GetOverallPercent(record, measuredTotalMilliseconds))
 end
 
 function CPU:SetSkinnedArrowDirection(button, rotation)
