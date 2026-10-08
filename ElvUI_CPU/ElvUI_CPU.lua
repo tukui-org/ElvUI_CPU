@@ -469,6 +469,8 @@ function CPU:ToggleSort(columnIndex)
 			return CPU:CompareRecords(leftRecord, rightRecord)
 		end)
 	end
+
+	self:UpdateSortArrows()
 end
 
 function CPU:RecordMatchesSearch(record)
@@ -762,6 +764,31 @@ function CPU:ConfigureColumnHeader(header, columnIndex)
 	end
 
 	header.Grip.columnIndex = columnIndex
+
+	if not header.SortArrow then
+		local sortArrow = header:CreateTexture(nil, "OVERLAY")
+		sortArrow:SetAtlas("auctionhouse-ui-sortarrow", true)
+		sortArrow:SetPoint("LEFT", header:GetFontString(), "RIGHT", 3, 0)
+		header.SortArrow = sortArrow
+	end
+end
+
+function CPU:UpdateSortArrows()
+	for columnIndex = 1, #self.columnHeaders do
+		local header = self.columnHeaders[columnIndex]
+		local sortArrow = header and header.SortArrow
+		if sortArrow then
+			local columnSelected = columnIndex == self.sortColumnIndex
+			sortArrow:SetShown(columnSelected)
+			if columnSelected then
+				if self.sortDescending then
+					sortArrow:SetTexCoord(0, 1, 0, 1)
+				else
+					sortArrow:SetTexCoord(0, 1, 1, 0)
+				end
+			end
+		end
+	end
 end
 
 function CPU:LayoutColumnHeaders()
@@ -786,6 +813,7 @@ function CPU:LayoutColumnHeaders()
 		end
 
 	self:PositionColumnHeaders()
+	self:UpdateSortArrows()
 end
 
 function CPU:ApplyHorizontalOffset(scrollPercentage)

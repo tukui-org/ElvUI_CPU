@@ -44,6 +44,13 @@
 				</Texture>
 			</Layer>
 		</Layers>
+		<HighlightTexture file="Interface\Buttons\WHITE8X8" alphaMode="ADD">
+			<Anchors>
+				<Anchor point="TOPLEFT" />
+				<Anchor point="BOTTOMRIGHT" />
+			</Anchors>
+			<Color r="1" g="1" b="1" a="0.12" />
+		</HighlightTexture>
 		<Scripts>
 			<OnLoad method="OnLoad" />
 		</Scripts>
