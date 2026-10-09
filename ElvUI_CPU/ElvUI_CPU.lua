@@ -28,6 +28,7 @@ end)
 CPU.functionRecords = { }
 CPU.originalFunctions = { }
 CPU.wrappedMarkers = { }
+CPU.installedWrappers = { }
 CPU.columnHeaders = { }
 CPU.searchText = ""
 CPU.sortColumnIndex = 7
@@ -112,6 +113,8 @@ function CPU:ADDON_LOADED(loadedAddonName)
 		return
 	end
 
+	self:WrapElvUIFunctions()
+
 	if type(_G.ElvUI_CPUSaved) ~= "table" then
 		_G.ElvUI_CPUSaved = { }
 	end
@@ -142,8 +145,40 @@ function CPU:ToggleFrame()
 	end
 end
 
-function CPU:RegisterPlugin(pluginName)
-	if type(pluginName) ~= "string" then
+function CPU:GetAddonObjectName(addonObject)
+	if type(addonObject) ~= "table" then
+		return nil
+	end
+
+	if type(addonObject.GetName) == "function" then
+		local addonObjectName = addonObject:GetName()
+		if type(addonObjectName) == "string" and addonObjectName ~= "" then
+			return addonObjectName
+		end
+	end
+
+	if type(addonObject.moduleName) == "string" and addonObject.moduleName ~= "" then
+		return addonObject.moduleName
+	end
+
+	if type(addonObject.name) == "string" and addonObject.name ~= "" then
+		return addonObject.name
+	end
+end
+
+function CPU:RegisterPlugin(plugin)
+	local pluginName
+	local pluginTable
+	if type(plugin) == "string" then
+		pluginName = plugin
+	elseif type(plugin) == "table" then
+		pluginTable = plugin
+		pluginName = self:GetAddonObjectName(plugin)
+	else
+		return
+	end
+
+	if type(pluginName) ~= "string" or pluginName == "" then
 		return
 	end
 
@@ -152,7 +187,7 @@ function CPU:RegisterPlugin(pluginName)
 	end
 
 	self.plugins[pluginName] = true
-	self:WrapPlugin(pluginName)
+	self:WrapPlugin(pluginName, pluginTable)
 	self:PublishDirtyRecords()
 end
 
@@ -166,7 +201,28 @@ function CPU:RegisterPluginModule(pluginName, moduleName, moduleTable)
 	self:PublishDirtyRecords()
 end
 
-function CPU:WrapPlugin(pluginName)
+function CPU:ResolvePluginOwner(pluginName, pluginTable)
+	if type(pluginTable) == "table" then
+		return pluginTable
+	end
+
+	local moduleOwner = E:GetModule(pluginName, true)
+	if type(moduleOwner) == "table" then
+		return moduleOwner
+	end
+
+	local addonOwner = E.Libs.AceAddon:GetAddon(pluginName, true)
+	if type(addonOwner) == "table" then
+		return addonOwner
+	end
+
+	local localAddonTable = C_AddOns.GetAddOnLocalTable(pluginName)
+	if type(localAddonTable) == "table" then
+		return localAddonTable
+	end
+end
+
+function CPU:WrapPlugin(pluginName, pluginTable)
 	if not self:IsProfilerEnabled() or type(pluginName) ~= "string" then
 		return
 	end
@@ -175,9 +231,9 @@ function CPU:WrapPlugin(pluginName)
 		self.measureStartedAt = GetTime()
 	end
 
-	local addon = E.Libs.AceAddon:GetAddon(pluginName, true)
-	if not addon then
-		addon = C_AddOns.GetAddOnLocalTable(pluginName)
+	local addon = self:ResolvePluginOwner(pluginName, pluginTable)
+	if type(addon) ~= "table" then
+		return
 	end
 
 	self:WrapOwnerFunctions(pluginName..":", addon, false)
@@ -261,13 +317,66 @@ function CPU:RecordMeasuredCall(record, callResults)
 	record.deallocatedBytes = record.deallocatedBytes + callResults.deallocatedBytes
 end
 
+function CPU:RememberInstalledWrapper(owner, methodName, wrappedFunction)
+	local ownerWrappers = self.installedWrappers[owner]
+	if not ownerWrappers then
+		ownerWrappers = { }
+		self.installedWrappers[owner] = ownerWrappers
+	end
+	ownerWrappers[methodName] = wrappedFunction
+end
+
+function CPU:GetAceHookEmbedderName(hookedFunction)
+	local aceHook = LibStub("AceHook-3.0", true)
+	if type(aceHook) ~= "table" or type(aceHook.registry) ~= "table" then
+		return nil
+	end
+
+	for embedder, embedderHooks in pairs(aceHook.registry) do
+		if type(embedderHooks) == "table" then
+			for hookedObject, hookValue in pairs(embedderHooks) do
+				if hookValue == hookedFunction then
+					return self:GetAddonObjectName(embedder)
+				end
+				if type(hookedObject) == "table" and type(hookValue) == "table" then
+					for methodName, methodUid in pairs(hookValue) do
+						if methodUid == hookedFunction and type(methodName) == "string" then
+							return self:GetAddonObjectName(embedder)
+						end
+					end
+				end
+			end
+		end
+	end
+end
+
+function CPU:GetReplacementDisplayName(owner, methodName, currentFunction, displayName)
+	local ownerWrappers = self.installedWrappers[owner]
+	local installedWrapper = ownerWrappers and ownerWrappers[methodName]
+	if type(installedWrapper) ~= "function" or installedWrapper == currentFunction then
+		return displayName
+	end
+
+	local embedderName = self:GetAceHookEmbedderName(currentFunction)
+	if type(embedderName) ~= "string" or embedderName == "" then
+		embedderName = "hook"
+	end
+
+	return "("..embedderName..") "..displayName
+end
+
 function CPU:WrapFunction(displayName, owner, methodName, elvuiCodeSearch)
 	if type(owner) ~= "table" or type(methodName) ~= "string" then
 		return
 	end
 
 	local originalFunction = owner[methodName]
-	if type(originalFunction) ~= "function" or self.wrappedMarkers[originalFunction] then
+	if type(originalFunction) ~= "function" then
+		return
+	end
+
+	if self.wrappedMarkers[originalFunction] then
+		self:RememberInstalledWrapper(owner, methodName, originalFunction)
 		return
 	end
 
@@ -275,8 +384,11 @@ function CPU:WrapFunction(displayName, owner, methodName, elvuiCodeSearch)
 	if record then
 		owner[methodName] = record.wrappedFunction
 		self.wrappedMarkers[record.wrappedFunction] = true
+		self:RememberInstalledWrapper(owner, methodName, record.wrappedFunction)
 		return
 	end
+
+	displayName = self:GetReplacementDisplayName(owner, methodName, originalFunction, displayName)
 
 	record = {
 		name = displayName,
@@ -306,6 +418,7 @@ function CPU:WrapFunction(displayName, owner, methodName, elvuiCodeSearch)
 	self.originalFunctions[originalFunction] = record
 	self.functionRecords[#self.functionRecords + 1] = record
 	owner[methodName] = wrappedFunction
+	self:RememberInstalledWrapper(owner, methodName, wrappedFunction)
 	self.displayDirty = true
 end
 
@@ -1085,6 +1198,7 @@ function CPU:CreatePeakCallStackDialog()
 	local title = dialog:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	title:SetPoint("TOP", 0, -14)
 	title:SetText("Slowest call stack")
+	dialog.Title = title
 
 	local scrollFrame = CreateFrame("ScrollFrame", nil, dialog, "InputScrollFrameTemplate")
 	scrollFrame:SetPoint("TOPLEFT", 16, -40)
@@ -1162,20 +1276,29 @@ function CPU:FormatPeakCallStack(stackText)
 	if heldCallBoundary then
 		formattedLines[#formattedLines + 1] = "[C]: ?"
 	end
-	return table.concat(formattedLines, "\n")
+	local formattedCallStack = table.concat(formattedLines, "\n")
+	if formattedCallStack == "" then
+		return stackText
+	end
+	return formattedCallStack
 end
 
 function CPU:GetPeakCallStackText(record)
 	return string_format("%s\n\n%s", self:FormatElapsedTicks(record.peakTicks), self:FormatPeakCallStack(record.peakCallStack))
 end
 
-function CPU:ShowPeakCallStack(record)
+function CPU:ShowCallStackDialog(titleText, stackText)
 	local dialog = self:CreatePeakCallStackDialog()
+	dialog.Title:SetText(titleText)
 	local editBox = dialog.ScrollFrame.EditBox
-	editBox:SetText(self:GetPeakCallStackText(record))
+	editBox:SetText(stackText)
 	editBox:HighlightText()
 	editBox:SetFocus()
 	dialog:Show()
+end
+
+function CPU:ShowPeakCallStack(record)
+	self:ShowCallStackDialog("Slowest call stack", self:GetPeakCallStackText(record))
 end
 
 function CPU:ShowFunctionMenu(row, record)
