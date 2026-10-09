@@ -115,6 +115,11 @@
 								type="string" />
 						</KeyValues>
 					</Button>
+					<CheckButton parentKey="MicrosecondsCheck" inherits="UICheckButtonTemplate">
+						<Anchors>
+							<Anchor point="LEFT" relativeKey="$parent.ResetButton" relativePoint="RIGHT" x="6" y="0" />
+						</Anchors>
+					</CheckButton>
 					<EditBox parentKey="SearchBox" autoFocus="false" historyLines="1" bytes="256"
 						inherits="SearchBoxTemplate">
 						<Size x="220" y="22" />

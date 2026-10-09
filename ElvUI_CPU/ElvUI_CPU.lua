@@ -125,6 +125,12 @@ function CPU:ADDON_LOADED(loadedAddonName)
 		self.footerMetrics = _G.ElvUI_CPUSaved.footerMetrics
 	end
 
+	self.showMicroseconds = _G.ElvUI_CPUSaved.showMicroseconds and true or false
+	local microsecondsCheck = self.frame and self.frame.Toolbar and self.frame.Toolbar.MicrosecondsCheck
+	if microsecondsCheck then
+		microsecondsCheck:SetChecked(self.showMicroseconds)
+	end
+
 	self:SyncFooterDialog()
 	self.refreshTimer:SetScript("OnUpdate", function(timer, elapsedSeconds)
 		CPU:OnRefreshTimer(elapsedSeconds)
@@ -284,13 +290,21 @@ function CPU:GetProfilerTickFrequency()
 	return self.profilerTickFrequency
 end
 
-function CPU:FormatElapsedTicks(elapsedTicks)
-	local microseconds = (elapsedTicks * 1000000) / self:GetProfilerTickFrequency()
-	if microseconds < 1000 then
-		return string_format("%.1f µs", microseconds)
+function CPU:GetMillisecondsPerTick()
+	if not self.millisecondsPerTick then
+		self.millisecondsPerTick = 1000 / self:GetProfilerTickFrequency()
 	end
 
-	return string_format("%.3f ms", microseconds / 1000)
+	return self.millisecondsPerTick
+end
+
+function CPU:FormatElapsedTicks(elapsedTicks)
+	local milliseconds = elapsedTicks * self:GetMillisecondsPerTick()
+	if self.showMicroseconds and milliseconds < 1 then
+		return string_format("%.1f µs", milliseconds * 1000)
+	end
+
+	return string_format("%.3f ms", milliseconds)
 end
 
 function CPU:GetAverageElapsedTicks(record)
@@ -1408,6 +1422,28 @@ function CPU:SetSkinnedArrowDirection(button, rotation)
 	end
 end
 
+function CPU:SetupMicrosecondsCheck(microsecondsCheck)
+	local skinModule = E:GetModule("Skins")
+	microsecondsCheck.Text:SetText("Microseconds")
+	microsecondsCheck.tooltipText = "Values under 1 ms show as µs. Off keeps every time in milliseconds."
+	microsecondsCheck:SetChecked(self.showMicroseconds and true or false)
+	microsecondsCheck:SetScript("OnClick", function(checkButton)
+		CPU.showMicroseconds = checkButton:GetChecked() and true or false
+		if type(_G.ElvUI_CPUSaved) ~= "table" then
+			_G.ElvUI_CPUSaved = { }
+		end
+		_G.ElvUI_CPUSaved.showMicroseconds = CPU.showMicroseconds
+		CPU:RefreshVisibleRows()
+	end)
+	microsecondsCheck:HookScript("OnEnter", function(checkButton)
+		GameTooltip:SetOwner(checkButton, "ANCHOR_RIGHT")
+		GameTooltip_SetTitle(GameTooltip, checkButton.tooltipText)
+		GameTooltip:Show()
+	end)
+	microsecondsCheck:HookScript("OnLeave", GameTooltip_Hide)
+	skinModule:HandleCheckBox(microsecondsCheck)
+end
+
 function CPU:SkinToolbarButton(button)
 	button:HookScript("OnEnter", function(toolbarButton)
 		if toolbarButton.MouseoverOverlay then
@@ -1444,6 +1480,7 @@ function CPU:ApplyElvUISkin()
 	self:SkinToolbarButton(frame.Toolbar.PlayButton)
 	self:SkinToolbarButton(frame.Toolbar.RefreshButton)
 	self:SkinToolbarButton(frame.Toolbar.ResetButton)
+	self:SetupMicrosecondsCheck(frame.Toolbar.MicrosecondsCheck)
 	self:CreateFooterDialog()
 	skinModule:HandleEditBox(frame.Toolbar.SearchBox)
 
