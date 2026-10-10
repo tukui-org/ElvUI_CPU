@@ -724,75 +724,27 @@ function CPU:UpdateFooter()
 	end
 
 	self.frame.FooterButton.Text:SetText(footerText)
-	self:LayoutFooter()
-end
-
-function CPU:LayoutFooter()
-	local footerButton = self.frame and self.frame.FooterButton
-	local footerText = footerButton and footerButton.Text
-	if not footerText then
-		return
-	end
-
-	local footerWidth = footerButton:GetWidth() - 4
-	if footerWidth < 1 then
-		return
-	end
-
-	footerText:SetWidth(footerWidth)
-	local textHeight = footerText:GetStringHeight()
-	if textHeight < 12 then
-		textHeight = 12
-	end
-
-	local footerHeight = textHeight + 4
-	if footerHeight < 18 then
-		footerHeight = 18
-	end
-
-	self.footerHeight = footerHeight
-	footerButton:SetHeight(footerHeight)
-	self:AnchorScrollBox(self.horizontalBarShown)
 end
 
 function CPU:CreateFooterDialog()
-	if self.footerDialog then
-		return self.footerDialog
+	local dialog = self.footerDialog or (self.frame and self.frame.FooterDialog)
+	if not dialog or dialog.footerCheckboxes then
+		self.footerDialog = dialog
+		return dialog
 	end
 
 	local skinModule = E:GetModule("Skins")
-	local dialog = CreateFrame("Frame", "ElvUI_CPUFooterDialog", self.frame)
 	dialog.footerCheckboxes = { }
-	dialog:SetSize(520, 292)
-	dialog:SetPoint("CENTER")
-	dialog:SetFrameStrata("DIALOG")
-	dialog:SetToplevel(true)
-	dialog:EnableMouse(true)
 	dialog:SetTemplate("Transparent")
 	dialog:CreateCloseButton()
-	dialog:Hide()
-
-	local title = dialog:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	title:SetPoint("TOP", 0, -14)
-	title:SetText("Footer stats")
-
-	local note = dialog:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-	note:SetPoint("BOTTOM", 0, 14)
-	note:SetText("Tick times are ElvUI's own cost, from C_AddOnProfiler.GetAddOnMetric.")
 
 	local settings = self:GetFooterSettings()
-	local columnRowCount = { 0, 0 }
 	for definitionIndex = 1, #self.footerMetricDefinitions do
 		local definition = self.footerMetricDefinitions[definitionIndex]
-		local columnIndex = definition.column
-		columnRowCount[columnIndex] = columnRowCount[columnIndex] + 1
-		local rowIndex = columnRowCount[columnIndex]
-
-		local checkbox = CreateFrame("CheckButton", "ElvUI_CPUFooterMetric"..definitionIndex, dialog, "UICheckButtonTemplate")
+		local checkbox = dialog[definition.key]
 		checkbox.footerMetricKey = definition.key
 		checkbox.Text:SetText(definition.label)
 		checkbox:SetChecked(settings[definition.key] and true or false)
-		checkbox:SetPoint("TOPLEFT", dialog, "TOPLEFT", columnIndex == 1 and 16 or 270, -36 - ((rowIndex - 1) * 30))
 		checkbox:SetScript("OnClick", function(checkButton)
 			local footerSettings = CPU:GetFooterSettings()
 			footerSettings[checkButton.footerMetricKey] = checkButton:GetChecked() and true or false
@@ -855,6 +807,27 @@ function CPU:PositionColumnHeaders()
 	end
 end
 
+ElvUICpuColumnGripMixin = { }
+
+function ElvUICpuColumnGripMixin:OnEnter()
+	if SetCursor then
+		SetCursor("UI_RESIZE_CURSOR")
+	end
+end
+
+function ElvUICpuColumnGripMixin:OnLeave()
+	if SetCursor and not CPU.columnDragging then
+		SetCursor(nil)
+	end
+end
+
+function ElvUICpuColumnGripMixin:OnMouseDown(buttonName)
+	if buttonName ~= "LeftButton" then
+		return
+	end
+	CPU:StartColumnDrag(self.columnIndex)
+end
+
 function CPU:ConfigureColumnHeader(header, columnIndex)
 	header.tooltipText = self.columnDefinitions[columnIndex].tooltip
 	if not header.Grip then
@@ -868,31 +841,8 @@ function CPU:ConfigureColumnHeader(header, columnIndex)
 		end)
 		header:HookScript("OnLeave", GameTooltip_Hide)
 
-		local grip = CreateFrame("Button", nil, header)
-		grip:SetSize(8, 18)
-		grip:SetPoint("RIGHT", header, "RIGHT", -1, 0)
+		local grip = CreateFrame("Button", nil, header, "ElvUICpuColumnGripTemplate")
 		grip:SetFrameLevel(header:GetFrameLevel() + 5)
-		local gripTexture = grip:CreateTexture(nil, "OVERLAY")
-		gripTexture:SetColorTexture(1, 1, 1, 0.45)
-		gripTexture:SetWidth(2)
-		gripTexture:SetPoint("TOP", grip, "TOP", 0, -2)
-		gripTexture:SetPoint("BOTTOM", grip, "BOTTOM", 0, 2)
-		grip:SetScript("OnEnter", function()
-			if SetCursor then
-				SetCursor("UI_RESIZE_CURSOR")
-			end
-		end)
-		grip:SetScript("OnLeave", function()
-			if SetCursor and not CPU.columnDragging then
-				SetCursor(nil)
-			end
-		end)
-		grip:SetScript("OnMouseDown", function(gripButton, buttonName)
-			if buttonName ~= "LeftButton" then
-				return
-			end
-			CPU:StartColumnDrag(gripButton.columnIndex)
-		end)
 		header.Grip = grip
 	end
 
@@ -974,26 +924,16 @@ end
 
 function CPU:AnchorScrollBox(showBar)
 	local scrollBox = self.frame.ScrollBox
-	local footerHeight = self.footerHeight or 18
-	local footerTop = 6 + footerHeight
-	local bottomInset = footerTop + 8
+	local footerButton = self.frame.FooterButton
 	local horizontalBar = self.frame.HorizontalScrollBar
-
-	if showBar and horizontalBar then
-		local barHeight = horizontalBar:GetHeight()
-		if barHeight < 1 then
-			barHeight = 16
-		end
-		local barOffset = footerTop + 4
-		horizontalBar:ClearAllPoints()
-		horizontalBar:SetPoint("BOTTOMLEFT", self.frame, "BOTTOMLEFT", 12, barOffset)
-		horizontalBar:SetPoint("BOTTOMRIGHT", self.frame, "BOTTOMRIGHT", -37, barOffset)
-		bottomInset = barOffset + barHeight + 4
-	end
 
 	scrollBox:ClearAllPoints()
 	scrollBox:SetPoint("TOPLEFT", self.frame.Columns, "BOTTOMLEFT", 0, -2)
-	scrollBox:SetPoint("BOTTOMRIGHT", self.frame, "BOTTOMRIGHT", -37, bottomInset)
+	if showBar and horizontalBar then
+		scrollBox:SetPoint("BOTTOMRIGHT", horizontalBar, "TOPRIGHT", 0, 4)
+	else
+		scrollBox:SetPoint("BOTTOMRIGHT", footerButton, "TOPRIGHT", 103, 8)
+	end
 end
 
 function CPU:UpdateHorizontalExtent()
@@ -1188,35 +1128,15 @@ local peakCallStackBorderNames = {
 	"MiddleTex",
 }
 
-function CPU:CreatePeakCallStackDialog()
-	if self.peakCallStackDialog then
-		return self.peakCallStackDialog
-	end
+ElvUICpuPeakCallStackMixin = { }
 
-	local dialog = CreateFrame("Frame", "ElvUI_CPUPeakCallStackDialog", UIParent)
-	dialog:SetSize(960, 520)
-	dialog:SetPoint("CENTER")
-	dialog:SetFrameStrata("DIALOG")
-	dialog:SetToplevel(true)
-	dialog:EnableMouse(true)
-	dialog:SetMovable(true)
-	dialog:SetClampedToScreen(true)
-	dialog:SetResizeBounds(640, 320, 1400, 900)
-	dialog:RegisterForDrag("LeftButton")
-	dialog:SetScript("OnDragStart", dialog.StartMoving)
-	dialog:SetScript("OnDragStop", dialog.StopMovingOrSizing)
-	dialog:SetTemplate("Transparent")
-	dialog:CreateCloseButton()
-	dialog:Hide()
+function ElvUICpuPeakCallStackMixin:OnLoad()
+	self:SetResizeBounds(640, 320, 1400, 900)
+	self:RegisterForDrag("LeftButton")
+	self:SetTemplate("Transparent")
+	self:CreateCloseButton()
 
-	local title = dialog:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	title:SetPoint("TOP", 0, -14)
-	title:SetText("Slowest call stack")
-	dialog.Title = title
-
-	local scrollFrame = CreateFrame("ScrollFrame", nil, dialog, "InputScrollFrameTemplate")
-	scrollFrame:SetPoint("TOPLEFT", 16, -40)
-	scrollFrame:SetPoint("BOTTOMRIGHT", -36, 16)
+	local scrollFrame = self.ScrollFrame
 	scrollFrame.CharCount:Hide()
 	for borderIndex = 1, #peakCallStackBorderNames do
 		local borderRegion = scrollFrame[peakCallStackBorderNames[borderIndex]]
@@ -1225,30 +1145,18 @@ function CPU:CreatePeakCallStackDialog()
 		end
 	end
 	scrollFrame:CreateBackdrop("Transparent")
-	scrollFrame.EditBox:SetMaxLetters(0)
-	dialog.ScrollFrame = scrollFrame
 
-	local function UpdatePeakCallStackEditWidth(resizedDialog)
-		local editBox = resizedDialog.ScrollFrame.EditBox
-		local editWidth = resizedDialog.ScrollFrame:GetWidth() - 18
-		if editWidth < 1 then
-			return
-		end
-		editBox:SetWidth(editWidth)
-		ScrollingEdit_OnTextChanged(editBox, resizedDialog.ScrollFrame)
-	end
-
-	dialog:SetScript("OnSizeChanged", UpdatePeakCallStackEditWidth)
-	UpdatePeakCallStackEditWidth(dialog)
-
-	scrollFrame.EditBox:SetScript("OnEscapePressed", function(editBox)
-		editBox:ClearFocus()
-		dialog:Hide()
+	local editBox = scrollFrame.EditBox
+	editBox:SetMaxLetters(0)
+	editBox:ClearAllPoints()
+	editBox:SetPoint("TOPLEFT", scrollFrame, "TOPLEFT")
+	editBox:SetPoint("TOPRIGHT", scrollFrame, "TOPRIGHT", -18, 0)
+	editBox:SetScript("OnEscapePressed", function(pressedEditBox)
+		pressedEditBox:ClearFocus()
+		self:Hide()
 	end)
 
-	local resizeButton = CreateFrame("Button", nil, dialog, "PanelResizeButtonTemplate")
-	resizeButton:SetPoint("BOTTOMRIGHT", -4, 4)
-	resizeButton:Init(dialog, 640, 320, 1400, 900)
+	self.ResizeButton:Init(self, 640, 320, 1400, 900)
 
 	local skinModule = E:GetModule("Skins")
 	skinModule:HandleTrimScrollBar(scrollFrame.ScrollBar)
@@ -1257,6 +1165,28 @@ function CPU:CreatePeakCallStackDialog()
 		UISpecialFrames[#UISpecialFrames + 1] = "ElvUI_CPUPeakCallStackDialog"
 	end
 
+	CPU.peakCallStackDialog = self
+end
+
+function ElvUICpuPeakCallStackMixin:OnDragStart()
+	self:StartMoving()
+end
+
+function ElvUICpuPeakCallStackMixin:OnDragStop()
+	self:StopMovingOrSizing()
+end
+
+function ElvUICpuPeakCallStackMixin:OnSizeChanged()
+	local scrollFrame = self.ScrollFrame
+	local editBox = scrollFrame and scrollFrame.EditBox
+	if not editBox then
+		return
+	end
+	ScrollingEdit_OnTextChanged(editBox, scrollFrame)
+end
+
+function CPU:CreatePeakCallStackDialog()
+	local dialog = self.peakCallStackDialog or ElvUI_CPUPeakCallStackDialog
 	self.peakCallStackDialog = dialog
 	return dialog
 end
@@ -1341,23 +1271,15 @@ ElvUICpuRowMixin = { }
 function ElvUICpuRowMixin:OnLoad()
 	self.cells = { }
 	for columnIndex = 1, #CPU.columnDefinitions do
-		local cell = CreateFrame("Frame", nil, self)
-		cell:SetClipsChildren(true)
-		local fontString = cell:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-		fontString:SetWordWrap(false)
-		fontString:SetPoint("LEFT", cell, "LEFT", 6, 0)
-		fontString:SetPoint("RIGHT", cell, "RIGHT", -4, 0)
-		fontString:SetHeight(20)
-		cell.Text = fontString
-		self.cells[columnIndex] = cell
+		self.cells[columnIndex] = self["Cell"..columnIndex]
 	end
+end
 
-	self:SetScript("OnMouseUp", function(row, button)
-		if button ~= "RightButton" or not row.record then
-			return
-		end
-		CPU:ShowFunctionMenu(row, row.record)
-	end)
+function ElvUICpuRowMixin:OnMouseUp(button)
+	if button ~= "RightButton" or not self.record then
+		return
+	end
+	CPU:ShowFunctionMenu(self, self.record)
 end
 
 function ElvUICpuRowMixin:LayoutCells()
@@ -1517,7 +1439,6 @@ function ElvUICpuPanelMixin:OnLoad()
 	self:SetTitle("|cff1784d1ElvUI|r |cfffe7b2cCPU Analyzer|r")
 	self.TitleBar:Init(self)
 	self:SetScript("OnSizeChanged", function()
-		CPU:LayoutFooter()
 		CPU:UpdateHorizontalExtent()
 	end)
 	self.ResizeButton:Init(self, 640, 280, 1400, 900)

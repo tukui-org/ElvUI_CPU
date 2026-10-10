@@ -31,8 +31,59 @@
 		<DisabledFont style="GameFontDisable" />
 	</Button>
 
+	<Frame name="ElvUICpuCellTemplate" virtual="true" clipChildren="true">
+		<Layers>
+			<Layer level="OVERLAY">
+				<FontString parentKey="Text" inherits="GameFontHighlightSmall" wordwrap="false">
+					<Size y="20" />
+					<Anchors>
+						<Anchor point="LEFT" x="6" />
+						<Anchor point="RIGHT" x="-4" />
+					</Anchors>
+				</FontString>
+			</Layer>
+		</Layers>
+	</Frame>
+
+	<Button name="ElvUICpuColumnGripTemplate" mixin="ElvUICpuColumnGripMixin" virtual="true">
+		<Size x="8" y="18" />
+		<Anchors>
+			<Anchor point="RIGHT" x="-1" />
+		</Anchors>
+		<Layers>
+			<Layer level="OVERLAY">
+				<Texture parentKey="Line" file="Interface\Buttons\WHITE8X8">
+					<Size x="2" />
+					<Anchors>
+						<Anchor point="TOP" y="-2" />
+						<Anchor point="BOTTOM" y="2" />
+					</Anchors>
+					<Color r="1" g="1" b="1" a="0.45" />
+				</Texture>
+			</Layer>
+		</Layers>
+		<Scripts>
+			<OnEnter method="OnEnter" />
+			<OnLeave method="OnLeave" />
+			<OnMouseDown method="OnMouseDown" />
+		</Scripts>
+	</Button>
+
 	<Button name="ElvUICpuRowTemplate" mixin="ElvUICpuRowMixin" virtual="true">
 		<Size y="20" />
+		<Frames>
+			<Frame parentKey="Cell1" inherits="ElvUICpuCellTemplate" />
+			<Frame parentKey="Cell2" inherits="ElvUICpuCellTemplate" />
+			<Frame parentKey="Cell3" inherits="ElvUICpuCellTemplate" />
+			<Frame parentKey="Cell4" inherits="ElvUICpuCellTemplate" />
+			<Frame parentKey="Cell5" inherits="ElvUICpuCellTemplate" />
+			<Frame parentKey="Cell6" inherits="ElvUICpuCellTemplate" />
+			<Frame parentKey="Cell7" inherits="ElvUICpuCellTemplate" />
+			<Frame parentKey="Cell8" inherits="ElvUICpuCellTemplate" />
+			<Frame parentKey="Cell9" inherits="ElvUICpuCellTemplate" />
+			<Frame parentKey="Cell10" inherits="ElvUICpuCellTemplate" />
+			<Frame parentKey="Cell11" inherits="ElvUICpuCellTemplate" />
+		</Frames>
 		<Layers>
 			<Layer level="BACKGROUND">
 				<Texture parentKey="Alternate" hidden="true" alphaMode="ADD" file="Interface\Buttons\WHITE8X8">
@@ -53,11 +104,12 @@
 		</HighlightTexture>
 		<Scripts>
 			<OnLoad method="OnLoad" />
+			<OnMouseUp method="OnMouseUp" />
 		</Scripts>
 	</Button>
 
 	<Frame name="ElvUI_CPUFrame" mixin="ElvUICpuPanelMixin" inherits="ButtonFrameTemplate"
-		parent="UIParent" toplevel="true" movable="true" resizable="true" enableMouse="true"
+		parent="ElvUIParent" toplevel="true" movable="true" resizable="true" enableMouse="true"
 		hidden="true" frameStrata="HIGH">
 		<Size x="900" y="520" />
 		<Anchors>
@@ -144,11 +196,38 @@
 						relativePoint="BOTTOMRIGHT" x="-25" y="-4" />
 				</Anchors>
 			</Frame>
+			<Button parentKey="FooterButton">
+				<Size y="36" />
+				<Anchors>
+					<Anchor point="BOTTOMLEFT" x="12" y="6" />
+					<Anchor point="BOTTOMRIGHT" x="-140" y="6" />
+				</Anchors>
+				<Layers>
+					<Layer level="OVERLAY">
+						<FontString parentKey="Text" inherits="GameFontHighlightSmall" justifyH="LEFT" wordwrap="true">
+							<Anchors>
+								<Anchor point="TOPLEFT" x="2" y="-2" />
+								<Anchor point="BOTTOMRIGHT" x="-2" y="2" />
+							</Anchors>
+						</FontString>
+					</Layer>
+				</Layers>
+			</Button>
+			<EventFrame parentKey="HorizontalScrollBar" inherits="WowTrimHorizontalScrollBar"
+				hidden="true">
+				<Anchors>
+					<Anchor point="BOTTOMLEFT" relativeKey="$parent.FooterButton" relativePoint="TOPLEFT"
+						y="4" />
+					<Anchor point="BOTTOMRIGHT" relativeKey="$parent.FooterButton" relativePoint="TOPRIGHT"
+						x="103" y="4" />
+				</Anchors>
+			</EventFrame>
 			<Frame parentKey="ScrollBox" inherits="WowScrollBoxList">
 				<Anchors>
 					<Anchor point="TOPLEFT" relativeKey="$parent.Columns" relativePoint="BOTTOMLEFT"
 						y="-2" />
-					<Anchor point="BOTTOMRIGHT" x="-37" y="32" />
+					<Anchor point="BOTTOMRIGHT" relativeKey="$parent.FooterButton" relativePoint="TOPRIGHT"
+						x="103" y="8" />
 				</Anchors>
 				<Layers>
 					<Layer level="BACKGROUND">
@@ -166,29 +245,145 @@
 						relativePoint="BOTTOMRIGHT" x="6" y="4" />
 				</Anchors>
 			</EventFrame>
-			<EventFrame parentKey="HorizontalScrollBar" inherits="WowTrimHorizontalScrollBar"
-				hidden="true">
+			<Frame parentKey="FooterDialog" hidden="true" frameStrata="DIALOG" toplevel="true"
+				enableMouse="true">
+				<Size x="520" y="292" />
 				<Anchors>
-					<Anchor point="BOTTOMLEFT" x="12" y="26" />
-					<Anchor point="BOTTOMRIGHT" x="-37" y="26" />
-				</Anchors>
-			</EventFrame>
-			<Button parentKey="FooterButton">
-				<Size y="18" />
-				<Anchors>
-					<Anchor point="BOTTOMLEFT" x="12" y="6" />
-					<Anchor point="BOTTOMRIGHT" x="-140" y="6" />
+					<Anchor point="CENTER" />
 				</Anchors>
 				<Layers>
 					<Layer level="OVERLAY">
-						<FontString parentKey="Text" inherits="GameFontHighlightSmall" justifyH="LEFT" wordwrap="true">
+						<FontString parentKey="Title" inherits="GameFontNormal" text="Footer stats">
 							<Anchors>
-								<Anchor point="TOPLEFT" x="2" y="-2" />
+								<Anchor point="TOP" y="-14" />
+							</Anchors>
+						</FontString>
+						<FontString parentKey="Note" inherits="GameFontDisableSmall"
+							text="Tick times are ElvUI's own cost, from C_AddOnProfiler.GetAddOnMetric.">
+							<Anchors>
+								<Anchor point="BOTTOM" y="14" />
 							</Anchors>
 						</FontString>
 					</Layer>
 				</Layers>
-			</Button>
+				<Frames>
+					<CheckButton parentKey="functionCount" inherits="UICheckButtonTemplate">
+						<Anchors>
+							<Anchor point="TOPLEFT" x="16" y="-36" />
+						</Anchors>
+						<KeyValues>
+							<KeyValue key="footerMetricKey" value="functionCount" type="string" />
+						</KeyValues>
+					</CheckButton>
+					<CheckButton parentKey="lastTime" inherits="UICheckButtonTemplate">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeKey="$parent.functionCount" relativePoint="BOTTOMLEFT"
+								y="2" />
+						</Anchors>
+						<KeyValues>
+							<KeyValue key="footerMetricKey" value="lastTime" type="string" />
+						</KeyValues>
+					</CheckButton>
+					<CheckButton parentKey="recentAverageTime" inherits="UICheckButtonTemplate">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeKey="$parent.lastTime" relativePoint="BOTTOMLEFT"
+								y="2" />
+						</Anchors>
+						<KeyValues>
+							<KeyValue key="footerMetricKey" value="recentAverageTime" type="string" />
+						</KeyValues>
+					</CheckButton>
+					<CheckButton parentKey="peakTime" inherits="UICheckButtonTemplate">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeKey="$parent.recentAverageTime" relativePoint="BOTTOMLEFT"
+								y="2" />
+						</Anchors>
+						<KeyValues>
+							<KeyValue key="footerMetricKey" value="peakTime" type="string" />
+						</KeyValues>
+					</CheckButton>
+					<CheckButton parentKey="sessionAverageTime" inherits="UICheckButtonTemplate">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeKey="$parent.peakTime" relativePoint="BOTTOMLEFT"
+								y="2" />
+						</Anchors>
+						<KeyValues>
+							<KeyValue key="footerMetricKey" value="sessionAverageTime" type="string" />
+						</KeyValues>
+					</CheckButton>
+					<CheckButton parentKey="encounterAverageTime" inherits="UICheckButtonTemplate">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeKey="$parent.sessionAverageTime"
+								relativePoint="BOTTOMLEFT" y="2" />
+						</Anchors>
+						<KeyValues>
+							<KeyValue key="footerMetricKey" value="encounterAverageTime" type="string" />
+						</KeyValues>
+					</CheckButton>
+					<CheckButton parentKey="over1Ms" inherits="UICheckButtonTemplate">
+						<Anchors>
+							<Anchor point="TOPLEFT" x="270" y="-36" />
+						</Anchors>
+						<KeyValues>
+							<KeyValue key="footerMetricKey" value="over1Ms" type="string" />
+						</KeyValues>
+					</CheckButton>
+					<CheckButton parentKey="over5Ms" inherits="UICheckButtonTemplate">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeKey="$parent.over1Ms" relativePoint="BOTTOMLEFT"
+								y="2" />
+						</Anchors>
+						<KeyValues>
+							<KeyValue key="footerMetricKey" value="over5Ms" type="string" />
+						</KeyValues>
+					</CheckButton>
+					<CheckButton parentKey="over10Ms" inherits="UICheckButtonTemplate">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeKey="$parent.over5Ms" relativePoint="BOTTOMLEFT"
+								y="2" />
+						</Anchors>
+						<KeyValues>
+							<KeyValue key="footerMetricKey" value="over10Ms" type="string" />
+						</KeyValues>
+					</CheckButton>
+					<CheckButton parentKey="over50Ms" inherits="UICheckButtonTemplate">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeKey="$parent.over10Ms" relativePoint="BOTTOMLEFT"
+								y="2" />
+						</Anchors>
+						<KeyValues>
+							<KeyValue key="footerMetricKey" value="over50Ms" type="string" />
+						</KeyValues>
+					</CheckButton>
+					<CheckButton parentKey="over100Ms" inherits="UICheckButtonTemplate">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeKey="$parent.over50Ms" relativePoint="BOTTOMLEFT"
+								y="2" />
+						</Anchors>
+						<KeyValues>
+							<KeyValue key="footerMetricKey" value="over100Ms" type="string" />
+						</KeyValues>
+					</CheckButton>
+					<CheckButton parentKey="over500Ms" inherits="UICheckButtonTemplate">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeKey="$parent.over100Ms" relativePoint="BOTTOMLEFT"
+								y="2" />
+						</Anchors>
+						<KeyValues>
+							<KeyValue key="footerMetricKey" value="over500Ms" type="string" />
+						</KeyValues>
+					</CheckButton>
+					<CheckButton parentKey="over1000Ms" inherits="UICheckButtonTemplate">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeKey="$parent.over500Ms" relativePoint="BOTTOMLEFT"
+								y="2" />
+						</Anchors>
+						<KeyValues>
+							<KeyValue key="footerMetricKey" value="over1000Ms" type="string" />
+						</KeyValues>
+					</CheckButton>
+				</Frames>
+			</Frame>
 		</Frames>
 		<Layers>
 			<Layer level="OVERLAY">
@@ -202,6 +397,43 @@
 		<Scripts>
 			<OnLoad method="OnLoad" />
 			<OnShow method="OnShow" />
+		</Scripts>
+	</Frame>
+
+	<Frame name="ElvUI_CPUPeakCallStackDialog" mixin="ElvUICpuPeakCallStackMixin" parent="ElvUIParent"
+		hidden="true" movable="true" resizable="true" clampedToScreen="true" frameStrata="DIALOG"
+		toplevel="true" enableMouse="true">
+		<Size x="960" y="520" />
+		<Anchors>
+			<Anchor point="CENTER" />
+		</Anchors>
+		<Layers>
+			<Layer level="OVERLAY">
+				<FontString parentKey="Title" inherits="GameFontNormal" text="Slowest call stack">
+					<Anchors>
+						<Anchor point="TOP" y="-14" />
+					</Anchors>
+				</FontString>
+			</Layer>
+		</Layers>
+		<Frames>
+			<ScrollFrame parentKey="ScrollFrame" inherits="InputScrollFrameTemplate">
+				<Anchors>
+					<Anchor point="TOPLEFT" x="16" y="-40" />
+					<Anchor point="BOTTOMRIGHT" x="-36" y="16" />
+				</Anchors>
+			</ScrollFrame>
+			<Button parentKey="ResizeButton" inherits="PanelResizeButtonTemplate">
+				<Anchors>
+					<Anchor point="BOTTOMRIGHT" x="-4" y="4" />
+				</Anchors>
+			</Button>
+		</Frames>
+		<Scripts>
+			<OnLoad method="OnLoad" />
+			<OnDragStart method="OnDragStart" />
+			<OnDragStop method="OnDragStop" />
+			<OnSizeChanged method="OnSizeChanged" />
 		</Scripts>
 	</Frame>
 </Ui>
