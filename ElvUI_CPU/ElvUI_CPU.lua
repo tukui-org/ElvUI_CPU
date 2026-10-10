@@ -1614,9 +1614,14 @@ function ElvUICpuPanelMixin:OnShow()
 	CPU:UpdateFooter()
 end
 
-_G.SLASH_ELVUCPU1 = "/elvucpu"
-_G.SlashCmdList["ELVUCPU"] = function()
-	CPU:ToggleFrame()
+local function ToggleCPUFrame()
+    CPU:ToggleFrame()
 end
+
+SLASH_ELVUCPU1 = "/elvucpu"
+SLASH_ELVUCPU2 = "/cpu"
+SLASH_ELVUCPU3 = "/ecpu"
+
+SlashCmdList["ELVUCPU"] = ToggleCPUFrame
 
 CPU:WrapElvUIFunctions()
