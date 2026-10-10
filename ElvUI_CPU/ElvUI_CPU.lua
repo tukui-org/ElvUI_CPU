@@ -752,7 +752,9 @@ function CPU:CreateFooterDialog()
 		end)
 		dialog.footerCheckboxes[#dialog.footerCheckboxes + 1] = checkbox
 		skinModule:HandleCheckBox(checkbox)
+		self:ColorCheckedTexture(checkbox)
 	end
+	self:ApplyValueColor()
 
 	self.frame:HookScript("OnHide", function()
 		dialog:Hide()
@@ -1364,6 +1366,44 @@ function CPU:SetupMicrosecondsCheck(microsecondsCheck)
 	end)
 	microsecondsCheck:HookScript("OnLeave", GameTooltip_Hide)
 	skinModule:HandleCheckBox(microsecondsCheck)
+	self:ColorCheckedTexture(microsecondsCheck)
+end
+
+function CPU:ToggleScriptProfile()
+	E:SetCVar("scriptProfile", C_CVar.GetCVarBool("scriptProfile") and 0 or 1)
+	ReloadUI()
+end
+
+function CPU:ColorCheckedTexture(checkbox, red, green, blue)
+	local checkedTexture = checkbox and checkbox.GetCheckedTexture and checkbox:GetCheckedTexture()
+	if not checkedTexture then
+		return
+	end
+
+	if red == nil then
+		red, green, blue = unpack(E.media.rgbvaluecolor)
+	end
+	checkedTexture:SetVertexColor(red, green, blue, 0.8)
+end
+
+function CPU:ApplyValueColor(red, green, blue)
+	if red == nil then
+		red, green, blue = unpack(E.media.rgbvaluecolor)
+	end
+
+	local dialog = self.footerDialog or (self.frame and self.frame.FooterDialog)
+	if dialog and dialog.footerCheckboxes then
+		for checkboxIndex = 1, #dialog.footerCheckboxes do
+			self:ColorCheckedTexture(dialog.footerCheckboxes[checkboxIndex], red, green, blue)
+		end
+	end
+
+	local microsecondsCheck = self.frame and self.frame.Toolbar and self.frame.Toolbar.MicrosecondsCheck
+	self:ColorCheckedTexture(microsecondsCheck, red, green, blue)
+end
+
+E.valueColorUpdateFuncs.ElvUI_CPU = function(_, _, red, green, blue)
+	CPU:ApplyValueColor(red, green, blue)
 end
 
 function CPU:SkinToolbarButton(button)
@@ -1402,6 +1442,7 @@ function CPU:ApplyElvUISkin()
 	self:SkinToolbarButton(frame.Toolbar.PlayButton)
 	self:SkinToolbarButton(frame.Toolbar.RefreshButton)
 	self:SkinToolbarButton(frame.Toolbar.ResetButton)
+	self:SkinToolbarButton(frame.Toolbar.ProfileButton)
 	self:SetupMicrosecondsCheck(frame.Toolbar.MicrosecondsCheck)
 	self:CreateFooterDialog()
 	skinModule:HandleEditBox(frame.Toolbar.SearchBox)
@@ -1509,6 +1550,15 @@ function ElvUICpuPanelMixin:OnLoad()
 		CPU:ResetMeasuredFunctions()
 		CPU:RefreshVisibleRows()
 		CPU:UpdateFooter()
+	end)
+	local profileButton = self.Toolbar.ProfileButton
+	if C_CVar.GetCVarBool("scriptProfile") then
+		profileButton:SetText("Profiling")
+	else
+		profileButton:SetText("Profile")
+	end
+	profileButton:SetScript("OnClick", function()
+		CPU:ToggleScriptProfile()
 	end)
 
 	self.FooterButton:SetFrameLevel(self:GetFrameLevel() + 20)

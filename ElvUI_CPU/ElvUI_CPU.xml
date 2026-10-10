@@ -31,6 +31,20 @@
 		<DisabledFont style="GameFontDisable" />
 	</Button>
 
+	<CheckButton name="ElvUICpuCheckButtonTemplate" inherits="UICheckButtonArtTemplate" virtual="true">
+		<Size x="32" y="32" />
+		<Layers>
+			<Layer level="ARTWORK">
+				<FontString parentKey="Text" inherits="GameFontHighlightSmall">
+					<Anchors>
+						<Anchor point="LEFT" relativePoint="RIGHT" x="-2" />
+					</Anchors>
+					<Color r="1" g="1" b="1" />
+				</FontString>
+			</Layer>
+		</Layers>
+	</CheckButton>
+
 	<Frame name="ElvUICpuCellTemplate" virtual="true" clipChildren="true">
 		<Layers>
 			<Layer level="OVERLAY">
@@ -167,9 +181,20 @@
 								type="string" />
 						</KeyValues>
 					</Button>
-					<CheckButton parentKey="MicrosecondsCheck" inherits="UICheckButtonTemplate">
+					<Button parentKey="ProfileButton" inherits="ElvUICpuToolbarButtonTemplate" text="Profile">
+						<Size x="108" y="20" />
 						<Anchors>
-							<Anchor point="LEFT" relativeKey="$parent.ResetButton" relativePoint="RIGHT" x="6" y="0" />
+							<Anchor point="TOPLEFT" relativeKey="$parent.ResetButton" relativePoint="TOPRIGHT" x="6" />
+						</Anchors>
+						<KeyValues>
+							<KeyValue key="tooltipText"
+								value="Toggles CPU profiling and reloads the UI."
+								type="string" />
+						</KeyValues>
+					</Button>
+					<CheckButton parentKey="MicrosecondsCheck" inherits="ElvUICpuCheckButtonTemplate">
+						<Anchors>
+							<Anchor point="LEFT" relativeKey="$parent.ProfileButton" relativePoint="RIGHT" x="6" y="0" />
 						</Anchors>
 					</CheckButton>
 					<EditBox parentKey="SearchBox" autoFocus="false" historyLines="1" bytes="256"
@@ -253,10 +278,11 @@
 				</Anchors>
 				<Layers>
 					<Layer level="OVERLAY">
-						<FontString parentKey="Title" inherits="GameFontNormal" text="Footer stats">
+						<FontString parentKey="Title" inherits="GameFontHighlight" text="Footer stats">
 							<Anchors>
 								<Anchor point="TOP" y="-14" />
 							</Anchors>
+							<Color r="1" g="1" b="1" />
 						</FontString>
 						<FontString parentKey="Note" inherits="GameFontDisableSmall"
 							text="Tick times are ElvUI's own cost, from C_AddOnProfiler.GetAddOnMetric.">
@@ -267,7 +293,7 @@
 					</Layer>
 				</Layers>
 				<Frames>
-					<CheckButton parentKey="functionCount" inherits="UICheckButtonTemplate">
+					<CheckButton parentKey="functionCount" inherits="ElvUICpuCheckButtonTemplate">
 						<Anchors>
 							<Anchor point="TOPLEFT" x="16" y="-36" />
 						</Anchors>
@@ -275,7 +301,7 @@
 							<KeyValue key="footerMetricKey" value="functionCount" type="string" />
 						</KeyValues>
 					</CheckButton>
-					<CheckButton parentKey="lastTime" inherits="UICheckButtonTemplate">
+					<CheckButton parentKey="lastTime" inherits="ElvUICpuCheckButtonTemplate">
 						<Anchors>
 							<Anchor point="TOPLEFT" relativeKey="$parent.functionCount" relativePoint="BOTTOMLEFT"
 								y="2" />
@@ -284,7 +310,7 @@
 							<KeyValue key="footerMetricKey" value="lastTime" type="string" />
 						</KeyValues>
 					</CheckButton>
-					<CheckButton parentKey="recentAverageTime" inherits="UICheckButtonTemplate">
+					<CheckButton parentKey="recentAverageTime" inherits="ElvUICpuCheckButtonTemplate">
 						<Anchors>
 							<Anchor point="TOPLEFT" relativeKey="$parent.lastTime" relativePoint="BOTTOMLEFT"
 								y="2" />
@@ -293,7 +319,7 @@
 							<KeyValue key="footerMetricKey" value="recentAverageTime" type="string" />
 						</KeyValues>
 					</CheckButton>
-					<CheckButton parentKey="peakTime" inherits="UICheckButtonTemplate">
+					<CheckButton parentKey="peakTime" inherits="ElvUICpuCheckButtonTemplate">
 						<Anchors>
 							<Anchor point="TOPLEFT" relativeKey="$parent.recentAverageTime" relativePoint="BOTTOMLEFT"
 								y="2" />
@@ -302,7 +328,7 @@
 							<KeyValue key="footerMetricKey" value="peakTime" type="string" />
 						</KeyValues>
 					</CheckButton>
-					<CheckButton parentKey="sessionAverageTime" inherits="UICheckButtonTemplate">
+					<CheckButton parentKey="sessionAverageTime" inherits="ElvUICpuCheckButtonTemplate">
 						<Anchors>
 							<Anchor point="TOPLEFT" relativeKey="$parent.peakTime" relativePoint="BOTTOMLEFT"
 								y="2" />
@@ -311,7 +337,7 @@
 							<KeyValue key="footerMetricKey" value="sessionAverageTime" type="string" />
 						</KeyValues>
 					</CheckButton>
-					<CheckButton parentKey="encounterAverageTime" inherits="UICheckButtonTemplate">
+					<CheckButton parentKey="encounterAverageTime" inherits="ElvUICpuCheckButtonTemplate">
 						<Anchors>
 							<Anchor point="TOPLEFT" relativeKey="$parent.sessionAverageTime"
 								relativePoint="BOTTOMLEFT" y="2" />
@@ -320,7 +346,7 @@
 							<KeyValue key="footerMetricKey" value="encounterAverageTime" type="string" />
 						</KeyValues>
 					</CheckButton>
-					<CheckButton parentKey="over1Ms" inherits="UICheckButtonTemplate">
+					<CheckButton parentKey="over1Ms" inherits="ElvUICpuCheckButtonTemplate">
 						<Anchors>
 							<Anchor point="TOPLEFT" x="270" y="-36" />
 						</Anchors>
@@ -328,7 +354,7 @@
 							<KeyValue key="footerMetricKey" value="over1Ms" type="string" />
 						</KeyValues>
 					</CheckButton>
-					<CheckButton parentKey="over5Ms" inherits="UICheckButtonTemplate">
+					<CheckButton parentKey="over5Ms" inherits="ElvUICpuCheckButtonTemplate">
 						<Anchors>
 							<Anchor point="TOPLEFT" relativeKey="$parent.over1Ms" relativePoint="BOTTOMLEFT"
 								y="2" />
@@ -337,7 +363,7 @@
 							<KeyValue key="footerMetricKey" value="over5Ms" type="string" />
 						</KeyValues>
 					</CheckButton>
-					<CheckButton parentKey="over10Ms" inherits="UICheckButtonTemplate">
+					<CheckButton parentKey="over10Ms" inherits="ElvUICpuCheckButtonTemplate">
 						<Anchors>
 							<Anchor point="TOPLEFT" relativeKey="$parent.over5Ms" relativePoint="BOTTOMLEFT"
 								y="2" />
@@ -346,7 +372,7 @@
 							<KeyValue key="footerMetricKey" value="over10Ms" type="string" />
 						</KeyValues>
 					</CheckButton>
-					<CheckButton parentKey="over50Ms" inherits="UICheckButtonTemplate">
+					<CheckButton parentKey="over50Ms" inherits="ElvUICpuCheckButtonTemplate">
 						<Anchors>
 							<Anchor point="TOPLEFT" relativeKey="$parent.over10Ms" relativePoint="BOTTOMLEFT"
 								y="2" />
@@ -355,7 +381,7 @@
 							<KeyValue key="footerMetricKey" value="over50Ms" type="string" />
 						</KeyValues>
 					</CheckButton>
-					<CheckButton parentKey="over100Ms" inherits="UICheckButtonTemplate">
+					<CheckButton parentKey="over100Ms" inherits="ElvUICpuCheckButtonTemplate">
 						<Anchors>
 							<Anchor point="TOPLEFT" relativeKey="$parent.over50Ms" relativePoint="BOTTOMLEFT"
 								y="2" />
@@ -364,7 +390,7 @@
 							<KeyValue key="footerMetricKey" value="over100Ms" type="string" />
 						</KeyValues>
 					</CheckButton>
-					<CheckButton parentKey="over500Ms" inherits="UICheckButtonTemplate">
+					<CheckButton parentKey="over500Ms" inherits="ElvUICpuCheckButtonTemplate">
 						<Anchors>
 							<Anchor point="TOPLEFT" relativeKey="$parent.over100Ms" relativePoint="BOTTOMLEFT"
 								y="2" />
@@ -373,7 +399,7 @@
 							<KeyValue key="footerMetricKey" value="over500Ms" type="string" />
 						</KeyValues>
 					</CheckButton>
-					<CheckButton parentKey="over1000Ms" inherits="UICheckButtonTemplate">
+					<CheckButton parentKey="over1000Ms" inherits="ElvUICpuCheckButtonTemplate">
 						<Anchors>
 							<Anchor point="TOPLEFT" relativeKey="$parent.over500Ms" relativePoint="BOTTOMLEFT"
 								y="2" />
