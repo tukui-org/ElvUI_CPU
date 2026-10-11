@@ -1149,6 +1149,9 @@ function ElvUICpuPeakCallStackMixin:OnLoad()
 	scrollFrame:CreateBackdrop("Transparent")
 
 	local editBox = scrollFrame.EditBox
+	if editBox.cursorOffset == nil then
+		ScrollingEdit_SetCursorOffsets(editBox, 0, 0)
+	end
 	editBox:SetMaxLetters(0)
 	editBox:ClearAllPoints()
 	editBox:SetPoint("TOPLEFT", scrollFrame, "TOPLEFT")
@@ -1179,12 +1182,23 @@ function ElvUICpuPeakCallStackMixin:OnDragStop()
 end
 
 function ElvUICpuPeakCallStackMixin:OnSizeChanged()
+	if self.updatingScrollEdit then
+		return
+	end
+
 	local scrollFrame = self.ScrollFrame
 	local editBox = scrollFrame and scrollFrame.EditBox
 	if not editBox then
 		return
 	end
+
+	if editBox.cursorOffset == nil then
+		ScrollingEdit_SetCursorOffsets(editBox, 0, 0)
+	end
+
+	self.updatingScrollEdit = true
 	ScrollingEdit_OnTextChanged(editBox, scrollFrame)
+	self.updatingScrollEdit = false
 end
 
 function CPU:CreatePeakCallStackDialog()
